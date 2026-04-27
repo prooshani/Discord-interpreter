@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+    <title>Discord Interpreter Settings</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1016;
+        --panel: #131821;
+        --panel-2: #0f141d;
+        --line: #263040;
+        --text: #eef3f8;
+        --muted: #9aa8ba;
+        --soft: #c5d0dd;
+        --accent: #35d7bc;
+        --danger: #ef9aa8;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        font-size: 14px;
+      }
+      button, input, select, textarea { font: inherit; }
+      .layout {
+        display: grid;
+        grid-template-columns: 248px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+      aside {
+        border-right: 1px solid var(--line);
+        background: #10141d;
+        padding: 28px 18px;
+      }
+      .brand h1 {
+        margin: 0 0 6px;
+        font-size: 20px;
+        line-height: 1.15;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+      .brand p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .side-card {
+        margin-top: 28px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 14px;
+      }
+      .side-card strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+      }
+      .side-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      nav {
+        display: grid;
+        gap: 6px;
+        margin-top: 26px;
+      }
+      nav a {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 36px;
+        border-radius: 7px;
+        padding: 0 11px;
+        color: var(--soft);
+        text-decoration: none;
+        font-weight: 650;
+      }
+      nav a:hover {
+        background: #1a2130;
+      }
+      nav a::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 99px;
+        background: #718097;
+      }
+      nav a.active {
+        color: var(--text);
+        background: #202838;
+      }
+      nav a.active::before {
+        background: var(--accent);
+      }
+      main {
+        min-width: 0;
+        padding: 30px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      .header h2 {
+        margin: 0 0 7px;
+        font-size: 26px;
+        line-height: 1.1;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+      .header p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--soft);
+        font-weight: 700;
+        user-select: none;
+      }
+      .toggle input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .toggle-track {
+        width: 42px;
+        height: 24px;
+        border: 1px solid #465268;
+        border-radius: 999px;
+        background: #252d3c;
+        padding: 2px;
+        transition: background .16s ease, border-color .16s ease;
+      }
+      .toggle-thumb {
+        display: block;
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: #aeb9c8;
+        transition: transform .16s ease, background .16s ease;
+      }
+      .toggle input:checked + .toggle-track {
+        border-color: var(--accent);
+        background: var(--accent);
+      }
+      .toggle input:checked + .toggle-track .toggle-thumb {
+        transform: translateX(18px);
+        background: #062421;
+      }
+      .sections {
+        display: grid;
+        gap: 18px;
+      }
+      section {
+        scroll-margin-top: 20px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 18px;
+      }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 16px;
+      }
+      .section-head h3 {
+        margin: 0 0 5px;
+        font-size: 17px;
+        font-weight: 730;
+        letter-spacing: 0;
+      }
+      .section-head p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .field {
+        display: grid;
+        gap: 7px;
+      }
+      .field > span {
+        color: var(--soft);
+        font-size: 13px;
+        font-weight: 680;
+      }
+      .field small {
+        color: #8997aa;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      input, select, textarea {
+        width: 100%;
+        min-height: 40px;
+        border: 1px solid #303a4d;
+        border-radius: 7px;
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 9px 11px;
+        outline: none;
+      }
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+        line-height: 1.45;
+      }
+      input:focus, select:focus, textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(53, 215, 188, .12);
+      }
+      .provider-list {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .language-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .language-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        border: 1px solid #303a4d;
+        border-radius: 7px;
+        background: var(--panel-2);
+        color: var(--soft);
+        padding: 0 10px;
+        font-weight: 650;
+      }
+      .language-option input {
+        width: 15px;
+        min-height: 15px;
+        accent-color: var(--accent);
+      }
+      .provider-card {
+        min-height: 76px;
+        border: 1px solid #303a4d;
+        border-radius: 8px;
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 12px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .provider-card strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+      }
+      .provider-card span {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .provider-card[data-selected="true"] {
+        border-color: var(--accent);
+        background: #10251f;
+        box-shadow: inset 0 0 0 1px rgba(53,215,188,.32);
+      }
+      .secret-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+      }
+      .model-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+      }
+      .local-settings {
+        align-items: start;
+      }
+      .local-settings .wide {
+        grid-column: 1 / -1;
+      }
+      .plain-button {
+        min-height: 40px;
+        border: 1px solid #303a4d;
+        border-radius: 7px;
+        background: #222a39;
+        color: var(--soft);
+        padding: 0 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .debug-box, .test-result {
+        border: 1px solid #303a4d;
+        border-radius: 7px;
+        background: var(--panel-2);
+        padding: 12px;
+        min-height: 94px;
+        color: #dce6f1;
+        white-space: pre-wrap;
+        line-height: 1.45;
+      }
+      .debug-box {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        color: #aeeedc;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin: 10px 0 12px;
+      }
+      .metric-card {
+        border: 1px solid #303a4d;
+        border-radius: 7px;
+        background: #101722;
+        padding: 10px 12px;
+      }
+      .metric-card span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      .metric-card strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 18px;
+      }
+      .metric-card small {
+        display: block;
+        margin-top: 3px;
+        color: #8997aa;
+        font-size: 11px;
+      }
+      .log-viewer {
+        min-height: 180px;
+        max-height: 280px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+      }
+      .provider-test {
+        margin-top: 16px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+      .provider-test-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 12px;
+      }
+      .provider-test-head strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+      .provider-test-head span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .footer {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 20px;
+        padding: 16px 0 0;
+        background: linear-gradient(180deg, transparent, var(--bg) 32%);
+      }
+      .status {
+        color: #aeeedc;
+        font-size: 13px;
+      }
+      .buttons {
+        display: flex;
+        gap: 10px;
+      }
+      .button {
+        min-height: 40px;
+        border: 0;
+        border-radius: 7px;
+        padding: 0 15px;
+        font-weight: 760;
+        cursor: pointer;
+      }
+      .primary {
+        background: var(--accent);
+        color: #052421;
+      }
+      .secondary {
+        background: #222a39;
+        color: var(--soft);
+      }
+      .danger {
+        background: #3a2128;
+        color: #ffc5ce;
+      }
+      .hidden { display: none !important; }
+      @media (max-width: 980px) {
+        .layout { grid-template-columns: 1fr; }
+        aside {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .provider-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside>
+        <div class="brand">
+          <h1>Discord Interpreter</h1>
+          <p>Private local translation overlay for Discord.</p>
+        </div>
+        <nav>
+          <a class="active" href="#languages">Languages</a>
+          <a href="#providers">Providers</a>
+          <a href="#display">Display</a>
+          <a href="#diagnostics">Diagnostics</a>
+        </nav>
+        <div class="side-card">
+          <strong>Local-only Discord behavior</strong>
+          <p>No self-bot, no token scraping, no private Discord API, no messages posted to chat.</p>
+        </div>
+      </aside>
+
+      <main>
+        <div class="header">
+          <div>
+            <h2>Interpreter Settings</h2>
+            <p>Configure detection, translation provider, display behavior, and diagnostics from one place.</p>
+          </div>
+          <label class="toggle">
+            <span>Interpreter</span>
+            <input id="enabled" type="checkbox">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="sections">
+          <section id="languages">
+            <div class="section-head">
+              <div>
+                <h3>Languages</h3>
+                <p>Choose which chat messages should be translated and which language you want to read.</p>
+              </div>
+            </div>
+            <div class="grid">
+              <label class="field">
+                <span>Detect messages</span>
+                <select id="detectionMode">
+                  <option value="de">German only</option>
+                  <option value="non-en">Any non-English message</option>
+                  <option value="auto">Auto, except destination language</option>
+                  <option value="fr">French only</option>
+                  <option value="es">Spanish only</option>
+                  <option value="it">Italian only</option>
+                  <option value="pt">Portuguese only</option>
+                  <option value="nl">Dutch only</option>
+                  <option value="pl">Polish only</option>
+                  <option value="tr">Turkish only</option>
+                  <option value="fa">Persian only</option>
+                  <option value="ar">Arabic only</option>
+                  <option value="ru">Russian only</option>
+                  <option value="uk">Ukrainian only</option>
+                  <option value="ja">Japanese only</option>
+                  <option value="ko">Korean only</option>
+                  <option value="zh">Chinese only</option>
+                </select>
+                <small>German-only now includes short workplace phrases like “Konnen wir das morgen deployen?”.</small>
+              </label>
+              <div class="field">
+                <span>Destination languages</span>
+                <div class="language-grid">
+                  <label class="language-option"><input type="checkbox" data-target-language="en">English</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="fa">Persian</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="ar">Arabic</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="de">German</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="fr">French</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="es">Spanish</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="it">Italian</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="pt">Portuguese</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="nl">Dutch</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="pl">Polish</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="tr">Turkish</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="ru">Russian</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="uk">Ukrainian</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="ja">Japanese</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="ko">Korean</label>
+                  <label class="language-option"><input type="checkbox" data-target-language="zh">Chinese</label>
+                </div>
+                <small>Every selected language appears as its own local translation block.</small>
+              </div>
+            </div>
+          </section>
+
+          <section id="providers">
+            <div class="section-head">
+              <div>
+                <h3>Provider</h3>
+                <p>Select translation engine and credentials.</p>
+              </div>
+            </div>
+            <input id="provider" type="hidden">
+            <div class="provider-list">
+              <button class="provider-card" type="button" data-provider="mock"><strong>Mock</strong><span>No network. UI test only.</span></button>
+              <button class="provider-card" type="button" data-provider="openai"><strong>OpenAI</strong><span>Best context handling.</span></button>
+              <button class="provider-card" type="button" data-provider="azure"><strong>Azure Translator</strong><span>Fast, production text API.</span></button>
+              <button class="provider-card" type="button" data-provider="local"><strong>Local LLM</strong><span>Ollama, LM Studio, vLLM.</span></button>
+              <button class="provider-card" type="button" data-provider="deepl"><strong>DeepL</strong><span>Strong German translation.</span></button>
+              <button class="provider-card" type="button" data-provider="google"><strong>Google</strong><span>Broad language support.</span></button>
+              <button class="provider-card" type="button" data-provider="libre"><strong>LibreTranslate</strong><span>Self-hosted open-source API.</span></button>
+            </div>
+
+            <div class="grid provider-settings" data-provider-panel="openai" style="margin-top:16px">
+              <label class="field"><span>OpenAI model</span><input id="openaiModel" type="text" spellcheck="false" placeholder="gpt-5-mini"></label>
+              <label class="field"><span>OpenAI API key</span><div class="secret-row"><input id="openaiApiKey" type="password" spellcheck="false" autocomplete="off"><button class="plain-button" type="button" data-toggle-secret="openaiApiKey">Show</button></div></label>
+            </div>
+
+            <div class="grid provider-settings local-settings" data-provider-panel="local" style="margin-top:16px">
+              <label class="field"><span>Local base URL</span><input id="localBaseUrl" type="url" spellcheck="false" placeholder="http://localhost:11434/v1"><small>Must expose `/chat/completions` under this base URL.</small></label>
+              <label class="field"><span>Model</span><div class="model-row"><select id="localModelSelect"><option value="">Manual model below</option></select><button class="plain-button" id="refreshModels" type="button">Refresh</button></div><input id="localModel" type="text" spellcheck="false" placeholder="llama3.1"><small>Loads from `/models`; manual entry still works.</small></label>
+              <label class="field wide"><span>Optional API key</span><div class="secret-row"><input id="localApiKey" type="password" spellcheck="false" autocomplete="off"><button class="plain-button" type="button" data-toggle-secret="localApiKey">Show</button></div></label>
+            </div>
+
+            <div class="grid provider-settings" data-provider-panel="deepl" style="margin-top:16px">
+              <label class="field"><span>DeepL API key</span><div class="secret-row"><input id="deeplApiKey" type="password" spellcheck="false" autocomplete="off"><button class="plain-button" type="button" data-toggle-secret="deeplApiKey">Show</button></div></label>
+            </div>
+
+            <div class="grid provider-settings" data-provider-panel="google" style="margin-top:16px">
+              <label class="field"><span>Google API key</span><div class="secret-row"><input id="googleApiKey" type="password" spellcheck="false" autocomplete="off"><button class="plain-button" type="button" data-toggle-secret="googleApiKey">Show</button></div></label>
+            </div>
+
+            <div class="grid provider-settings" data-provider-panel="azure" style="margin-top:16px">
+              <label class="field"><span>Azure endpoint</span><input id="azureEndpoint" type="url" spellcheck="false" placeholder="https://api.cognitive.microsofttranslator.com"><small>Or custom endpoint from Azure Translator resource.</small></label>
+              <label class="field"><span>Azure region (optional for global resource)</span><input id="azureRegion" type="text" spellcheck="false" placeholder="westeurope"></label>
+              <label class="field"><span>Azure API key</span><div class="secret-row"><input id="azureApiKey" type="password" spellcheck="false" autocomplete="off"><button class="plain-button" type="button" data-toggle-secret="azureApiKey">Show</button></div></label>
+            </div>
+
+            <div class="grid provider-settings" data-provider-panel="libre" style="margin-top:16px">
+              <label class="field"><span>LibreTranslate base URL</span><input id="libreBaseUrl" type="url" spellcheck="false" placeholder="http://localhost:5000"><small>Example: https://translate.yourdomain.com</small></label>
+              <label class="field"><span>Libre API key (optional)</span><div class="secret-row"><input id="libreApiKey" type="password" spellcheck="false" autocomplete="off"><button class="plain-button" type="button" data-toggle-secret="libreApiKey">Show</button></div></label>
+            </div>
+
+            <div class="provider-test">
+              <div class="provider-test-head">
+                <div>
+                  <strong>Provider connectivity test</strong>
+                  <span>Runs one uncached translation with current provider values. Does not save settings.</span>
+                </div>
+                <button class="plain-button" id="test" type="button">Test provider</button>
+              </div>
+              <div class="metrics" id="testStats"></div>
+              <div class="grid">
+                <label class="field"><span>Sample text</span><textarea id="testInput" spellcheck="false">Konnen wir das morgen deployen?</textarea></label>
+                <label class="field"><span>Result</span><div class="test-result" id="testResult">No provider test run yet.</div></label>
+              </div>
+            </div>
+          </section>
+
+          <section id="display">
+            <div class="section-head">
+              <div>
+                <h3>Display</h3>
+                <p>Control how translated messages appear inside Discord.</p>
+              </div>
+            </div>
+            <div class="grid">
+              <label class="field"><span>Display mode</span><select id="displayMode"><option value="below">Original with translation below</option><option value="replace">Replace message text</option><option value="compact">Compact translated note</option></select></label>
+              <label class="field"><span>Minimum characters</span><input id="minCharacters" type="number" min="3" max="200" step="1"><small>Lower value catches short messages, higher value reduces false detection.</small></label>
+              <label class="field"><span>Debounce delay</span><input id="debounceMs" type="number" min="100" max="3000" step="50"><small>Wait time before translating new messages.</small></label>
+              <label class="field"><span>Translate previous messages</span><input id="translateBacklogLimit" type="number" min="0" max="200" step="1"><small>Recommended: 10-30. Use 0 for new messages only. Large values can create long queues in busy channels.</small></label>
+              <label class="toggle" style="align-self:end; min-height:40px">
+                <span>Keep original visible</span>
+                <input id="keepOriginalVisible" type="checkbox">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+              <label class="toggle" style="align-self:end; min-height:40px">
+                <span>Show debug overlay</span>
+                <input id="debugOverlayEnabled" type="checkbox">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+              <label class="toggle" style="align-self:end; min-height:40px">
+                <span>Translate visible messages only</span>
+                <input id="visibleOnly" type="checkbox">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+              <label class="toggle" style="align-self:end; min-height:40px">
+                <span>Keep error logs</span>
+                <input id="loggingEnabled" type="checkbox">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+          </section>
+
+          <section id="diagnostics">
+            <div class="section-head">
+              <div>
+                <h3>Diagnostics</h3>
+                <p>Use Discord debug panel to verify live message scanning.</p>
+              </div>
+            </div>
+            <div class="debug-box" style="margin-top:14px">Recommended setup: visible-only enabled, previous messages 10-30. The Discord indicator is draggable and clickable: click it to turn interpreter on or off.</div>
+            <div class="provider-test" style="border-top:0; padding-top:14px">
+              <div class="provider-test-head">
+                <div>
+                  <strong>Error log</strong>
+                  <span>Session/local file for failed provider calls and runtime translation errors.</span>
+                </div>
+                <div class="buttons">
+                  <button class="plain-button" id="clearCache" type="button">Clear translation cache</button>
+                  <button class="plain-button" id="refreshLogs" type="button">Refresh</button>
+                  <button class="plain-button" id="clearLogs" type="button">Clear</button>
+                </div>
+              </div>
+              <textarea class="log-viewer" id="logViewer" readonly spellcheck="false"></textarea>
+            </div>
+          </section>
+        </div>
+
+        <div class="footer">
+          <div class="status" id="status">Ready.</div>
+          <div class="buttons">
+            <button class="button secondary" id="close" type="button">Close</button>
+            <button class="button danger" id="reset" type="button">Reset</button>
+            <button class="button primary" id="save" type="button">Save settings</button>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="./settings.js"></script>
+  </body>
+</html>

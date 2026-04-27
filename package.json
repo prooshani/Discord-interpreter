@@ -1,0 +1,75 @@
+{
+  "name": "discord-interpreter",
+  "version": "0.1.0",
+  "description": "Native-feeling Discord web wrapper with local private translation overlays.",
+  "main": "dist/main/main.js",
+  "author": "Local",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "clean": "rimraf dist release",
+    "build": "tsc && node scripts/copy-renderer.mjs",
+    "dev": "npm run build && electron .",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dist:mac:arm64": "npm run build && electron-builder --mac dmg --arm64",
+    "dist:mac:x64": "npm run build && electron-builder --mac dmg --x64",
+    "dist:win": "npm run build && electron-builder --win nsis --x64",
+    "dist:win:arm64": "npm run build && electron-builder --win nsis --arm64"
+  },
+  "dependencies": {
+    "franc-min": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.0.12",
+    "rimraf": "^6.1.2",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "local.discord.interpreter",
+    "productName": "Discord Interpreter",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Discord Interpreter"
+    }
+  }
+}

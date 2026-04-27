@@ -1,0 +1,49 @@
+## Dependencies
+node_modules/
+
+## Build output
+dist/
+release/
+out/
+coverage/
+build-output/
+
+## Electron / installer temporary files
+*.blockmap
+*.dmg
+*.exe
+*.AppImage
+*.snap
+*.msi
+
+## Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+## Environment files
+.env
+.env.*
+!.env.example
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+## TypeScript
+*.tsbuildinfo
+
+## Runtime / cache
+tmp/
+temp/
+.cache/
+*.pid
