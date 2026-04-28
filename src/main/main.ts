@@ -12,6 +12,9 @@ let settingsCache: InterpreterSettings | null = null;
 let updateDownloaded = false;
 let updateCheckInProgress = false;
 let manualUpdateCheckRequested = false;
+let updateDownloadInProgress = false;
+let updateDownloadPercent = 0;
+let pendingUpdateVersion: string | null = null;
 
 const discordOrigin = "https://discord.com";
 const discordUrl = "https://discord.com/app";
@@ -80,6 +83,30 @@ async function checkForUpdatesFromMenu(): Promise<void> {
     await showInfo("An update check is already in progress.");
     return;
   }
+  if (updateDownloadInProgress) {
+    await showInfo(
+      "Update download in progress",
+      `Downloading update: ${Math.round(updateDownloadPercent)}%`
+    );
+    return;
+  }
+  if (updateDownloaded) {
+    const options: Electron.MessageBoxOptions = {
+      type: "info",
+      title: "Update ready",
+      message: `Version ${pendingUpdateVersion ?? "new version"} is already downloaded.`,
+      detail: "Install now to restart and apply the update.",
+      buttons: ["Install now", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    };
+    const choice = mainWindow
+      ? await dialog.showMessageBox(mainWindow, options)
+      : await dialog.showMessageBox(options);
+    if (choice.response === 0) installDownloadedUpdate();
+    return;
+  }
   manualUpdateCheckRequested = true;
   try {
     await autoUpdater.checkForUpdates();
@@ -97,9 +124,39 @@ function installDownloadedUpdate(): void {
   autoUpdater.quitAndInstall(false, true);
 }
 
+function setDownloadProgress(percent: number): void {
+  updateDownloadPercent = Math.max(0, Math.min(100, percent));
+  if (mainWindow) {
+    if (updateDownloadInProgress) mainWindow.setProgressBar(updateDownloadPercent / 100);
+    else mainWindow.setProgressBar(-1);
+  }
+  buildMenu();
+}
+
+async function beginUpdateDownload(initiatedManually: boolean): Promise<void> {
+  if (updateDownloadInProgress || updateDownloaded) return;
+  updateDownloadInProgress = true;
+  setDownloadProgress(0);
+  if (initiatedManually) {
+    await showInfo(
+      "Downloading update...",
+      "Download started. Progress is shown in the taskbar and Help menu."
+    );
+  }
+  try {
+    await autoUpdater.downloadUpdate();
+  } catch (error) {
+    updateDownloadInProgress = false;
+    setDownloadProgress(0);
+    const message = error instanceof Error ? error.message : "Unknown download error.";
+    await appendLog(settingsCache, "Updater download failed", message);
+    await showInfo("Update download failed", message);
+  }
+}
+
 function setupAutoUpdater(): void {
   if (!app.isPackaged) return;
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("checking-for-update", () => {
@@ -109,19 +166,41 @@ function setupAutoUpdater(): void {
 
   autoUpdater.on("update-available", async (info) => {
     updateDownloaded = false;
+    pendingUpdateVersion = info.version;
     buildMenu();
     if (manualUpdateCheckRequested) {
-      await showInfo("Update found", `Version ${info.version} is available. Download has started.`);
+      const options: Electron.MessageBoxOptions = {
+        type: "info",
+        title: "Update available",
+        message: `Version ${info.version} is available.`,
+        detail: "Download and install this update now?",
+        buttons: ["Download and Install", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true
+      };
+      const choice = mainWindow
+        ? await dialog.showMessageBox(mainWindow, options)
+        : await dialog.showMessageBox(options);
+      if (choice.response === 0) await beginUpdateDownload(true);
+      manualUpdateCheckRequested = false;
+      return;
     }
+    void beginUpdateDownload(false);
   });
 
   autoUpdater.on("update-not-available", async () => {
     updateCheckInProgress = false;
     buildMenu();
     if (manualUpdateCheckRequested) {
-      await showInfo("You are up to date.");
+      await showInfo("You are on the latest version.");
     }
     manualUpdateCheckRequested = false;
+  });
+
+  autoUpdater.on("download-progress", async (progress) => {
+    if (!updateDownloadInProgress) updateDownloadInProgress = true;
+    setDownloadProgress(progress.percent);
   });
 
   autoUpdater.on("error", async (error) => {
@@ -135,7 +214,11 @@ function setupAutoUpdater(): void {
   autoUpdater.on("update-downloaded", async (info) => {
     updateCheckInProgress = false;
     updateDownloaded = true;
+    updateDownloadInProgress = false;
+    pendingUpdateVersion = info.version;
     manualUpdateCheckRequested = false;
+    setDownloadProgress(100);
+    if (mainWindow) mainWindow.setProgressBar(-1);
     buildMenu();
     const options: Electron.MessageBoxOptions = {
       type: "info",
@@ -151,6 +234,11 @@ function setupAutoUpdater(): void {
       ? await dialog.showMessageBox(mainWindow, options)
       : await dialog.showMessageBox(options);
     if (choice.response === 0) installDownloadedUpdate();
+  });
+
+  void autoUpdater.checkForUpdates().catch(async (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    await appendLog(settingsCache, "Auto update check failed", message);
   });
 }
 
@@ -336,11 +424,13 @@ function buildMenu(): void {
       submenu: [
         {
           label: "Check for Updates",
-          enabled: app.isPackaged && !updateCheckInProgress,
+          enabled: app.isPackaged && !updateCheckInProgress && !updateDownloadInProgress,
           click: () => void checkForUpdatesFromMenu()
         },
         {
-          label: "Install Downloaded Update and Restart",
+          label: updateDownloadInProgress
+            ? `Downloading Update... ${Math.round(updateDownloadPercent)}%`
+            : "Install Downloaded Update and Restart",
           enabled: app.isPackaged && updateDownloaded,
           click: () => installDownloadedUpdate()
         },

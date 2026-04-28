@@ -1,6 +1,6 @@
 {
   "name": "discord-interpreter",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Native-feeling Discord web wrapper with local private translation overlays.",
   "main": "dist/main/main.js",
   "author": "Local",
