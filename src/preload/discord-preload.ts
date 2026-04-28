@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld("discordInterpreter", api);
 type MessageJob = {
   element: HTMLElement;
   text: string;
+  shouldNotify: boolean;
 };
 
 type RenderedTranslation = {
@@ -488,13 +489,13 @@ function isEligible(element: HTMLElement, text: string): boolean {
   return true;
 }
 
-function enqueue(element: HTMLElement): void {
+function enqueue(element: HTMLElement, shouldNotify = false): void {
   if (!settings?.enabled) return;
   const text = candidateText(element);
   scannedCount += 1;
   if (!isEligible(element, text)) return;
   seenText.set(element, text);
-  pending.set(element, { element, text });
+  pending.set(element, { element, text, shouldNotify });
   queuedCount += 1;
   debug(`queued: "${text.slice(0, 120)}"`);
   updateActivity("Translating...");
@@ -571,9 +572,32 @@ async function translateMessage(job: MessageJob): Promise<void> {
   renderTranslations(job.element, job.text, results);
   translated.set(job.element, candidateText(job.element));
   translatedCount += results.length;
+  if (job.shouldNotify && document.hidden) {
+    const preview = results[0]?.result.translatedText?.trim() || job.text;
+    const author = getMessageAuthor(job.element);
+    void ipcRenderer.invoke("notify:new-message", {
+      title: author ? `New message from ${author}` : "New Discord message",
+      body: preview.slice(0, 280)
+    });
+  }
   debug(`translated: ${results.map(({ targetLanguage }) => targetLanguage.toUpperCase()).join(", ")} "${job.text.slice(0, 80)}"`);
   updateActivity();
   updateLivePill();
+}
+
+function getMessageAuthor(element: HTMLElement): string {
+  const article = element.closest<HTMLElement>(articleSelector) ?? element.parentElement;
+  if (!article) return "";
+  const candidates = [
+    article.querySelector<HTMLElement>('[id^="message-username-"]'),
+    article.querySelector<HTMLElement>('[class*="username"]'),
+    article.querySelector<HTMLElement>("h3 span")
+  ];
+  for (const candidate of candidates) {
+    const text = candidate?.textContent?.trim();
+    if (text) return text;
+  }
+  return "";
 }
 
 function getTargetLanguages(currentSettings: InterpreterSettings): Array<TranslationRequest["targetLanguage"]> {
@@ -643,7 +667,11 @@ function findMessageTargets(root: ParentNode = document, limit = settings?.trans
   return sorted.slice(0, limit);
 }
 
-function scan(root: ParentNode = document, limit = settings?.translateBacklogLimit ?? 30): void {
+function scan(
+  root: ParentNode = document,
+  limit = settings?.translateBacklogLimit ?? 30,
+  shouldNotify = false
+): void {
   if (!settings?.enabled) {
     clearQueue();
     updateActivity("Interpreter off");
@@ -652,7 +680,7 @@ function scan(root: ParentNode = document, limit = settings?.translateBacklogLim
   }
   const nodes = findMessageTargets(root, limit);
   debug(`scan: found ${nodes.length} message candidates`);
-  nodes.forEach(enqueue);
+  nodes.forEach((node) => enqueue(node, shouldNotify));
   updateActivity();
   updateLivePill();
 }
@@ -672,7 +700,7 @@ function startObserver(): void {
     for (const mutation of mutations) {
       for (const node of Array.from(mutation.addedNodes)) {
         if (!(node instanceof HTMLElement)) continue;
-        scan(node, 20);
+        scan(node, 20, true);
       }
     }
   });

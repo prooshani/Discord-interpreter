@@ -1,6 +1,6 @@
 {
   "name": "discord-interpreter",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Native-feeling Discord web wrapper with local private translation overlays.",
   "main": "dist/main/main.js",
   "author": "Local",
@@ -22,6 +22,7 @@
     "version:major": "npm version major --no-git-tag-version"
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "franc-min": "^6.2.0"
   },
   "devDependencies": {
@@ -34,12 +35,26 @@
   "build": {
     "appId": "local.discord.interpreter",
     "productName": "Discord Interpreter",
+    "icon": "build/icon.ico",
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "prooshani",
+        "repo": "Discord-interpreter"
+      }
+    ],
     "files": [
       "dist/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "DI logo.png",
+        "to": "DI logo.png"
+      }
     ],
     "mac": {
       "target": [
@@ -70,11 +85,14 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Discord Interpreter",
       "uninstallDisplayName": "${productName} ${version}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "differentialPackage": true,
       "include": "build/installer.nsh"
     }
   }

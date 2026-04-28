@@ -1,5 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell, session } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, Notification, shell, session } from "electron";
 import { join } from "node:path";
+import { autoUpdater } from "electron-updater";
 import { loadSettings, saveSettings } from "./settings-store.js";
 import { appendLog, clearLog, readLog } from "./logging.js";
 import { clearTranslationCache, translateText } from "./translation.js";
@@ -8,6 +9,9 @@ import type { AppStatus, InterpreterSettings, TranslationRequest } from "../shar
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let settingsCache: InterpreterSettings | null = null;
+let updateDownloaded = false;
+let updateCheckInProgress = false;
+let manualUpdateCheckRequested = false;
 
 const discordOrigin = "https://discord.com";
 const discordUrl = "https://discord.com/app";
@@ -17,8 +21,137 @@ const appDisplayName = "Discord Interpreter";
 app.setName("Discord-interpreter");
 app.setAppUserModelId(windowsAppUserModelId);
 
+const singleInstanceLock = app.requestSingleInstanceLock();
+if (!singleInstanceLock) app.quit();
+app.on("second-instance", () => {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+});
+
 function appRoot(...parts: string[]): string {
   return join(app.getAppPath(), ...parts);
+}
+
+function appLogoPath(): string {
+  if (app.isPackaged) return join(process.resourcesPath, "DI logo.png");
+  return appRoot("DI logo.png");
+}
+
+function showNativeNotification(payload: { title?: string; body?: string }): boolean {
+  if (!Notification.isSupported()) return false;
+  const icon = nativeImage.createFromPath(appLogoPath());
+  const notification = new Notification({
+    title: payload.title?.trim() || "New Discord message",
+    body: payload.body?.trim() || "",
+    icon: icon.isEmpty() ? undefined : icon,
+    urgency: "normal"
+  });
+  notification.on("click", () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+  notification.show();
+  return true;
+}
+
+async function showInfo(message: string, detail = ""): Promise<void> {
+  const options: Electron.MessageBoxOptions = {
+    type: "info",
+    title: appDisplayName,
+    message,
+    detail,
+    buttons: ["OK"],
+    noLink: true
+  };
+  if (mainWindow) await dialog.showMessageBox(mainWindow, options);
+  else await dialog.showMessageBox(options);
+}
+
+async function checkForUpdatesFromMenu(): Promise<void> {
+  if (!app.isPackaged) {
+    await showInfo("Updates are only available in installed packaged builds.");
+    return;
+  }
+  if (updateCheckInProgress) {
+    await showInfo("An update check is already in progress.");
+    return;
+  }
+  manualUpdateCheckRequested = true;
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    updateCheckInProgress = false;
+    manualUpdateCheckRequested = false;
+    buildMenu();
+    const message = error instanceof Error ? error.message : "Unknown update check error.";
+    await showInfo("Update check failed.", message);
+  }
+}
+
+function installDownloadedUpdate(): void {
+  if (!updateDownloaded) return;
+  autoUpdater.quitAndInstall(false, true);
+}
+
+function setupAutoUpdater(): void {
+  if (!app.isPackaged) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    updateCheckInProgress = true;
+    buildMenu();
+  });
+
+  autoUpdater.on("update-available", async (info) => {
+    updateDownloaded = false;
+    buildMenu();
+    if (manualUpdateCheckRequested) {
+      await showInfo("Update found", `Version ${info.version} is available. Download has started.`);
+    }
+  });
+
+  autoUpdater.on("update-not-available", async () => {
+    updateCheckInProgress = false;
+    buildMenu();
+    if (manualUpdateCheckRequested) {
+      await showInfo("You are up to date.");
+    }
+    manualUpdateCheckRequested = false;
+  });
+
+  autoUpdater.on("error", async (error) => {
+    updateCheckInProgress = false;
+    manualUpdateCheckRequested = false;
+    buildMenu();
+    await appendLog(settingsCache, "Updater error", error.message);
+    await showInfo("Updater error", error.message);
+  });
+
+  autoUpdater.on("update-downloaded", async (info) => {
+    updateCheckInProgress = false;
+    updateDownloaded = true;
+    manualUpdateCheckRequested = false;
+    buildMenu();
+    const options: Electron.MessageBoxOptions = {
+      type: "info",
+      title: "Update ready",
+      message: `Version ${info.version} is downloaded and ready to install.`,
+      detail: "Install now to restart the app, or install later on next app quit.",
+      buttons: ["Install now", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    };
+    const choice = mainWindow
+      ? await dialog.showMessageBox(mainWindow, options)
+      : await dialog.showMessageBox(options);
+    if (choice.response === 0) installDownloadedUpdate();
+  });
 }
 
 async function getSettings(): Promise<InterpreterSettings> {
@@ -39,6 +172,7 @@ function createMainWindow(): void {
     minWidth: 980,
     minHeight: 680,
     title: `${appDisplayName} v${app.getVersion()}`,
+    icon: appLogoPath(),
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#101114" : "#f7f7f8",
     show: false,
     webPreferences: {
@@ -119,6 +253,7 @@ function createSettingsWindow(): void {
     minWidth: 860,
     minHeight: 720,
     title: `${appDisplayName} Settings v${app.getVersion()}`,
+    icon: appLogoPath(),
     parent: mainWindow ?? undefined,
     backgroundColor: "#111318",
     webPreferences: {
@@ -200,15 +335,48 @@ function buildMenu(): void {
       label: "Help",
       submenu: [
         {
+          label: "Check for Updates",
+          enabled: app.isPackaged && !updateCheckInProgress,
+          click: () => void checkForUpdatesFromMenu()
+        },
+        {
+          label: "Install Downloaded Update and Restart",
+          enabled: app.isPackaged && updateDownloaded,
+          click: () => installDownloadedUpdate()
+        },
+        { type: "separator" },
+        {
+          label: "Test Notification",
+          click: async () => {
+            const ok = showNativeNotification({
+              title: `${appDisplayName} test notification`,
+              body: "If you can see this toast, Windows notifications are working."
+            });
+            if (ok) return;
+            const options: Electron.MessageBoxOptions = {
+              type: "warning",
+              title: "Notifications unavailable",
+              message: "Native notifications are not supported in this session.",
+              detail: "Try running the installed packaged build from the Start menu, then test again.",
+              buttons: ["OK"],
+              noLink: true
+            };
+            if (mainWindow) await dialog.showMessageBox(mainWindow, options);
+            else await dialog.showMessageBox(options);
+          }
+        },
+        {
           label: "About",
           click: async () => {
             const version = app.getVersion();
             const buildFlavor = app.isPackaged ? "Packaged build" : "Development build";
+            const logo = nativeImage.createFromPath(appLogoPath());
             const options: Electron.MessageBoxOptions = {
               type: "info",
               title: `About ${appDisplayName}`,
               message: `${appDisplayName} v${version}`,
               detail: `Build: ${buildFlavor}\nElectron: ${process.versions.electron}\nChrome: ${process.versions.chrome}\nNode.js: ${process.versions.node}`,
+              icon: logo.isEmpty() ? undefined : logo,
               buttons: ["OK"],
               noLink: true
             };
@@ -237,6 +405,7 @@ app.whenReady().then(async () => {
 
   buildMenu();
   createMainWindow();
+  setupAutoUpdater();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -316,4 +485,8 @@ ipcMain.handle("status:report", async (_event, status: AppStatus) => {
     console.warn(`[${status.code ?? "status"}] ${status.title}: ${status.message}`);
     await appendLog(settingsCache, `[${status.code ?? "status"}] ${status.title}`, status.message);
   }
+});
+
+ipcMain.handle("notify:new-message", async (_event, payload: { title?: string; body?: string }) => {
+  return showNativeNotification(payload);
 });
