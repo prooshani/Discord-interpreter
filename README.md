@@ -1,3 +1,5 @@
+<img width="1024" height="1024" alt="DI logo" src="https://github.com/user-attachments/assets/49a0f286-8ff7-4eda-9fd3-ad365bc385e8" />
+
 # Discord Interpreter
 
 Discord Interpreter is a desktop wrapper around Discord Web that adds local, private message translation overlays for multilingual teams.
