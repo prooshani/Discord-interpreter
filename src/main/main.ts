@@ -35,8 +35,8 @@ function appRoot(...parts: string[]): string {
 }
 
 function appLogoPath(): string {
-  if (app.isPackaged) return join(process.resourcesPath, "DI logo.png");
-  return appRoot("DI logo.png");
+  if (app.isPackaged) return join(process.resourcesPath, "DI logo-s.png");
+  return appRoot("DI logo-s.png");
 }
 
 function showNativeNotification(payload: { title?: string; body?: string }): boolean {
