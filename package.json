@@ -1,6 +1,6 @@
 {
   "name": "discord-interpreter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Native-feeling Discord web wrapper with local private translation overlays.",
   "main": "dist/main/main.js",
   "author": "Local",
@@ -16,7 +16,10 @@
     "dist:mac:arm64": "npm run build && electron-builder --mac dmg --arm64",
     "dist:mac:x64": "npm run build && electron-builder --mac dmg --x64",
     "dist:win": "npm run build && electron-builder --win nsis --x64",
-    "dist:win:arm64": "npm run build && electron-builder --win nsis --arm64"
+    "dist:win:arm64": "npm run build && electron-builder --win nsis --arm64",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version"
   },
   "dependencies": {
     "franc-min": "^6.2.0"
@@ -53,6 +56,7 @@
       "gatekeeperAssess": false
     },
     "win": {
+      "artifactName": "${productName} Setup ${version}-${arch}.${ext}",
       "target": [
         {
           "target": "nsis",
@@ -69,7 +73,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Discord Interpreter"
+      "shortcutName": "Discord Interpreter",
+      "uninstallDisplayName": "${productName} ${version}",
+      "include": "build/installer.nsh"
     }
   }
 }

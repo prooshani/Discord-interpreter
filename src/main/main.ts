@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell, session } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell, session } from "electron";
 import { join } from "node:path";
 import { loadSettings, saveSettings } from "./settings-store.js";
 import { appendLog, clearLog, readLog } from "./logging.js";
@@ -11,9 +11,11 @@ let settingsCache: InterpreterSettings | null = null;
 
 const discordOrigin = "https://discord.com";
 const discordUrl = "https://discord.com/app";
+const windowsAppUserModelId = "local.discord.interpreter";
+const appDisplayName = "Discord Interpreter";
 
 app.setName("Discord-interpreter");
-app.setAppUserModelId("Discord-interpreter");
+app.setAppUserModelId(windowsAppUserModelId);
 
 function appRoot(...parts: string[]): string {
   return join(app.getAppPath(), ...parts);
@@ -36,7 +38,7 @@ function createMainWindow(): void {
     height: 920,
     minWidth: 980,
     minHeight: 680,
-    title: "Discord Interpreter",
+    title: `${appDisplayName} v${app.getVersion()}`,
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#101114" : "#f7f7f8",
     show: false,
     webPreferences: {
@@ -116,7 +118,7 @@ function createSettingsWindow(): void {
     height: 860,
     minWidth: 860,
     minHeight: 720,
-    title: "Interpreter Settings",
+    title: `${appDisplayName} Settings v${app.getVersion()}`,
     parent: mainWindow ?? undefined,
     backgroundColor: "#111318",
     webPreferences: {
@@ -192,6 +194,28 @@ function buildMenu(): void {
         { role: "zoomOut" },
         { type: "separator" },
         { role: "togglefullscreen" }
+      ]
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "About",
+          click: async () => {
+            const version = app.getVersion();
+            const buildFlavor = app.isPackaged ? "Packaged build" : "Development build";
+            const options: Electron.MessageBoxOptions = {
+              type: "info",
+              title: `About ${appDisplayName}`,
+              message: `${appDisplayName} v${version}`,
+              detail: `Build: ${buildFlavor}\nElectron: ${process.versions.electron}\nChrome: ${process.versions.chrome}\nNode.js: ${process.versions.node}`,
+              buttons: ["OK"],
+              noLink: true
+            };
+            if (mainWindow) await dialog.showMessageBox(mainWindow, options);
+            else await dialog.showMessageBox(options);
+          }
+        }
       ]
     }
   ];
