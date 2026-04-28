@@ -1,4 +1,4 @@
-<img width="1024" height="1024" alt="DI logo" src="https://github.com/user-attachments/assets/49a0f286-8ff7-4eda-9fd3-ad365bc385e8" />
+<img width="179" height="177" alt="DI logo-s" src="https://github.com/user-attachments/assets/533588e3-0b04-476e-a9cb-53a84c738ef9" />
 
 # Discord Interpreter
 
